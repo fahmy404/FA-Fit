@@ -1,0 +1,6 @@
+{
+  "name": "FA² Fit",
+  "description": "A gamified Arabic calorie tracker with social challenges and a stunning dark glassmorphism UI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

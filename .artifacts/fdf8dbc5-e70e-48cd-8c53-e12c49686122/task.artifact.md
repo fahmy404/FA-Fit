@@ -1,0 +1,3 @@
+- [x] Add Kotlin Serialization to `libs.versions.toml`
+- [x] Add Kotlin Serialization plugin to root `build.gradle.kts`
+- [x] Sync Gradle project (Note: Configuration fixed, but failed due to disk space)

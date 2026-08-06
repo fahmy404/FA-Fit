@@ -1,0 +1,4 @@
+- [x] Move `app/.env` to root `.env`
+- [x] Update `.env.example`
+- [x] Verify `BuildConfig` generation
+- [x] Run build to confirm fix
