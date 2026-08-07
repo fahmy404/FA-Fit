@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -12,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Report
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
@@ -22,23 +24,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
 import coil.compose.AsyncImage
+import com.example.ui.components.QRCodeImage
 import com.example.ui.components.glassCard
 import com.example.ui.theme.*
-
-import com.example.ui.viewmodels.MainViewModel
 import com.example.ui.viewmodels.AppState
 import com.example.ui.viewmodels.Challenge
-import androidx.compose.ui.text.style.TextAlign
-import com.example.ui.components.QRCodeImage
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.foundation.clickable
+import com.example.ui.viewmodels.MainViewModel
 
-import androidx.compose.ui.platform.LocalContext
-import android.content.Intent
 
 @Composable
 fun ChallengesScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.compose.viewModel(), state: AppState = AppState()) {
@@ -49,6 +48,8 @@ fun ChallengesScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.com
     var qrCode by remember { mutableStateOf("") }
     var showCreateDialog by remember { mutableStateOf(false) }
     var challengeTitle by remember { mutableStateOf("") }
+    var challengeType by remember { mutableStateOf("calories") }
+    var challengeTarget by remember { mutableStateOf("") }
     
     var selectedChallengeForQr by remember { mutableStateOf<Challenge?>(null) }
     
@@ -139,31 +140,105 @@ fun ChallengesScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.com
     if (showCreateDialog) {
         AlertDialog(
             onDismissRequest = { showCreateDialog = false },
-            title = { Text("إنشاء تحدي جديد") },
+            title = { Text("إنشاء تحدي جديد", color = OnSurface) },
             text = {
-                OutlinedTextField(
-                    value = challengeTitle,
-                    onValueChange = { challengeTitle = it },
-                    placeholder = { Text("اسم التحدي") }
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = challengeTitle,
+                        onValueChange = { challengeTitle = it },
+                        placeholder = { Text("اسم التحدي") },
+                        label = { Text("اسم التحدي") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = com.example.ui.theme.Primary,
+                            focusedLabelColor = com.example.ui.theme.Primary,
+                            focusedTextColor = com.example.ui.theme.OnSurface,
+                            unfocusedTextColor = com.example.ui.theme.OnSurface
+                        )
+                    )
+                    
+                    // Challenge type selection
+                    Text("نوع التحدي:", style = MaterialTheme.typography.labelSmall, color = com.example.ui.theme.Outline)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            Triple("calories", "🔥 سعرات", "الهدف: اجمع سعرات"),
+                            Triple("workouts", "💪 سِتّ", "الهدف: أكمل سِتّ"),
+                            Triple("volume", "⚖️ وزن", "الهدف: ارفع وزن")
+                        ).forEach { (type, label, _) ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(
+                                        if (challengeType == type) com.example.ui.theme.Primary.copy(alpha = 0.2f)
+                                        else com.example.ui.theme.SurfaceContainerHigh,
+                                        androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (challengeType == type) com.example.ui.theme.Primary
+                                        else Color.White.copy(alpha = 0.1f),
+                                        androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable { challengeType = type }
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (challengeType == type) com.example.ui.theme.Primary else com.example.ui.theme.Outline
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Target value
+                    val targetLabel = when (challengeType) {
+                        "calories" -> "الهدف (سعرة)"
+                        "workouts" -> "الهدف (عدد سِتّ مكتملة)"
+                        "volume" -> "الهدف (كجم إجمالي مرفوع)"
+                        else -> "الهدف"
+                    }
+                    OutlinedTextField(
+                        value = challengeTarget,
+                        onValueChange = { challengeTarget = it },
+                        label = { Text(targetLabel) },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = com.example.ui.theme.Primary,
+                            focusedLabelColor = com.example.ui.theme.Primary,
+                            focusedTextColor = com.example.ui.theme.OnSurface,
+                            unfocusedTextColor = com.example.ui.theme.OnSurface
+                        )
+                    )
+                }
             },
             confirmButton = {
-                Button(onClick = { 
-                    viewModel.createChallenge(challengeTitle) { code ->
-                        val newlyCreated = Challenge(
-                            id = state.challenges.size + 1,
-                            title = challengeTitle,
-                            timeLeft = "7 أيام متبقية",
-                            rank = 1,
-                            code = code
-                        )
-                        selectedChallengeForQr = newlyCreated
-                    }
-                    showCreateDialog = false 
-                }) { Text("إنشاء") }
+                Button(
+                    onClick = {
+                        val target = challengeTarget.toIntOrNull() ?: 0
+                        viewModel.createChallenge(challengeTitle, challengeType, target) { code ->
+                            val newlyCreated = Challenge(
+                                id = state.challenges.size + 1,
+                                title = challengeTitle,
+                                timeLeft = "7 أيام متبقية",
+                                rank = 1,
+                                code = code,
+                                type = challengeType,
+                                targetValue = target
+                            )
+                            selectedChallengeForQr = newlyCreated
+                        }
+                        showCreateDialog = false
+                        challengeTitle = ""
+                        challengeTarget = ""
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = com.example.ui.theme.Primary)
+                ) { Text("إنشاء", color = com.example.ui.theme.OnPrimary) }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateDialog = false }) { Text("إلغاء") }
+                TextButton(onClick = { showCreateDialog = false }) { Text("إلغاء", color = com.example.ui.theme.Outline) }
             },
             containerColor = MaterialTheme.colorScheme.surface,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -180,7 +255,7 @@ fun ChallengesScreen(viewModel: MainViewModel = androidx.lifecycle.viewmodel.com
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         LevelCard(state)
-        ActiveChallenges(state, onQrClick = { selectedChallengeForQr = it })
+        ActiveChallenges(state, viewModel = viewModel, onQrClick = { selectedChallengeForQr = it })
         ActionButtons(
             onCreateClick = { showCreateDialog = true },
             onJoinClick = { showQRDialog = true }
@@ -246,7 +321,7 @@ fun LevelCard(state: AppState = AppState()) {
 }
 
 @Composable
-fun ActiveChallenges(state: AppState, onQrClick: (Challenge) -> Unit) {
+fun ActiveChallenges(state: AppState, viewModel: MainViewModel, onQrClick: (Challenge) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -257,22 +332,58 @@ fun ActiveChallenges(state: AppState, onQrClick: (Challenge) -> Unit) {
             Text("عرض الكل", style = MaterialTheme.typography.labelSmall, color = Primary)
         }
 
+        if (state.challenges.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceContainerLow, androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.05f), androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("🏆", style = MaterialTheme.typography.displayLarge)
+                    Text("لا توجد تحديات نشطة", style = MaterialTheme.typography.bodyMedium, color = Outline)
+                    Text("أنشئ تحدياً أو انضم لتحدي أصدقائك!", style = MaterialTheme.typography.labelSmall, color = OutlineVariant)
+                }
+            }
+        }
+
         state.challenges.forEach { challenge ->
+            val progress = viewModel.getChallengeProgress(challenge)
+            val progressFraction = if (challenge.targetValue > 0) {
+                (progress.toFloat() / challenge.targetValue.toFloat()).coerceIn(0f, 1f)
+            } else 0f
+            val progressPercent = (progressFraction * 100).toInt()
+
+            val typeLabel = when (challenge.type) {
+                "calories" -> "🔥 سعرات"
+                "workouts" -> "💪 سِتّ مكتملة"
+                "volume" -> "⚖️ وزن مرفوع"
+                else -> "🏆 تحدي"
+            }
+            val progressLabel = when (challenge.type) {
+                "calories" -> "$progress / ${challenge.targetValue} سعرة"
+                "workouts" -> "$progress / ${challenge.targetValue} سِتّ"
+                "volume" -> "$progress / ${challenge.targetValue} كجم"
+                else -> "$progress / ${challenge.targetValue}"
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .glassCard()
-                    .padding(0.dp) // Reset padding to handle left border properly
+                    .padding(0.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .width(4.dp)
                         .fillMaxHeight()
-                        .background(Tertiary)
+                        .background(if (progressFraction >= 1f) SuccessColor else Tertiary)
                 )
                 Column(
                     modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -283,14 +394,14 @@ fun ActiveChallenges(state: AppState, onQrClick: (Challenge) -> Unit) {
                             Box(
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .background(SurfaceContainer, RoundedCornerShape(12.dp)),
+                                    .background(SurfaceContainer, androidx.compose.foundation.shape.RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(Icons.Default.DirectionsRun, contentDescription = null, tint = Tertiary)
                             }
                             Column {
                                 Text(challenge.title, style = MaterialTheme.typography.labelLarge, color = OnSurface)
-                                Text("مع الأصدقاء • يومي", style = MaterialTheme.typography.bodySmall, color = Outline)
+                                Text(typeLabel, style = MaterialTheme.typography.bodySmall, color = Outline)
                                 if (challenge.code.isNotEmpty()) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
@@ -298,15 +409,15 @@ fun ActiveChallenges(state: AppState, onQrClick: (Challenge) -> Unit) {
                                         modifier = Modifier.clickable { onQrClick(challenge) }.padding(vertical = 4.dp)
                                     ) {
                                         Icon(Icons.Default.QrCode, contentDescription = "QR Code", tint = Primary, modifier = Modifier.size(16.dp))
-                                        Text("كود التحدي: ${challenge.code}", style = MaterialTheme.typography.labelSmall, color = Primary)
+                                        Text("كود: ${challenge.code}", style = MaterialTheme.typography.labelSmall, color = Primary)
                                     }
                                 }
                             }
                         }
-                        
+
                         Row(
                             modifier = Modifier
-                                .background(SurfaceContainerHigh, RoundedCornerShape(6.dp))
+                                .background(SurfaceContainerHigh, androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -315,9 +426,42 @@ fun ActiveChallenges(state: AppState, onQrClick: (Challenge) -> Unit) {
                             Text(challenge.timeLeft, style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
                         }
                     }
-                    
+
+                    // Real progress bar
+                    if (challenge.targetValue > 0) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(progressLabel, style = MaterialTheme.typography.labelSmall, color = OnSurfaceVariant)
+                                Text(
+                                    if (progressFraction >= 1f) "✅ مكتمل!" else "$progressPercent%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (progressFraction >= 1f) SuccessColor else PrimaryFixedDim
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .background(SurfaceContainerHigh, androidx.compose.foundation.shape.RoundedCornerShape(50))
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(progressFraction)
+                                        .fillMaxHeight()
+                                        .background(
+                                            androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                                if (progressFraction >= 1f) listOf(SuccessColor, SuccessColor)
+                                                else listOf(BrandPurple, Primary)
+                                            ),
+                                            androidx.compose.foundation.shape.RoundedCornerShape(50)
+                                        )
+                                )
+                            }
+                        }
+                    }
+
                     Divider(color = Color.White.copy(alpha = 0.05f))
-                    
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -354,7 +498,7 @@ fun ActiveChallenges(state: AppState, onQrClick: (Challenge) -> Unit) {
                                 Text("+3", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OnSurfaceVariant)
                             }
                         }
-                        
+
                         Column(horizontalAlignment = Alignment.End) {
                             Text("ترتيبك", style = MaterialTheme.typography.labelSmall, color = OutlineVariant)
                             Text("الـ ${challenge.rank}", style = MaterialTheme.typography.headlineMedium, color = Tertiary)

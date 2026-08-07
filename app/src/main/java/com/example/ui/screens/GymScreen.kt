@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -239,40 +240,188 @@ fun GymDayScreen(
     if (showAddExerciseDialog) {
         var exerciseName by remember { mutableStateOf("") }
         var targetMuscles by remember { mutableStateOf("") }
+        var selectedCategory by remember { mutableStateOf(0) }
+
+        // Predefined exercises organized by category
+        val exerciseCategories = listOf(
+            Triple("الصدر", "صدر", listOf(
+                Pair("بنش بريس", "صدر - باربل"),
+                Pair("دامبل فلاي", "صدر - دامبل"),
+                Pair("إنكلاين بنش بريس", "صدر علوي - باربل"),
+                Pair("ديكلاين بنش بريس", "صدر سفلي - باربل"),
+                Pair("ضغط صدر كابل", "صدر - كابل"),
+                Pair("بوش أب", "صدر - وزن الجسم"),
+                Pair("دامبل بنش بريس", "صدر - دامبل")
+            )),
+            Triple("الظهر", "ظهر", listOf(
+                Pair("ديدلفت", "ظهر كامل - باربل"),
+                Pair("لات بُل داون", "ظهر عريض - ماكينة"),
+                Pair("كابل صف", "ظهر أوسط - كابل"),
+                Pair("باربل صف", "ظهر أوسط - باربل"),
+                Pair("بُل أب", "ظهر عريض - وزن الجسم"),
+                Pair("دامبل صف", "ظهر أوسط - دامبل"),
+                Pair("هايبر اكستنشن", "أسفل الظهر - ماكينة")
+            )),
+            Triple("الأرجل", "أرجل", listOf(
+                Pair("سكوات", "أرجل كاملة - باربل"),
+                Pair("ليج بريس", "أرجل - ماكينة"),
+                Pair("ليج كيرل", "أوتار الركبة - ماكينة"),
+                Pair("ليج إكستنشن", "الرباعية - ماكينة"),
+                Pair("لانج", "أرجل - دامبل"),
+                Pair("كالف ريز", "ساق - ماكينة"),
+                Pair("رومانيان ديدلفت", "أوتار الركبة - باربل")
+            )),
+            Triple("الأكتاف", "أكتاف", listOf(
+                Pair("أوفرهيد بريس", "أكتاف - باربل"),
+                Pair("دامبل شولدر بريس", "أكتاف - دامبل"),
+                Pair("لاترال ريز", "أكتاف جانبية - دامبل"),
+                Pair("فرونت ريز", "أكتاف أمامية - دامبل"),
+                Pair("فيس بُل", "أكتاف خلفية - كابل"),
+                Pair("شراجز", "أكتاف علوية - دامبل")
+            )),
+            Triple("الذراعين", "ذراعين", listOf(
+                Pair("باربل كيرل", "باي سبس - باربل"),
+                Pair("دامبل كيرل", "باي سبس - دامبل"),
+                Pair("هامر كيرل", "باي سبس - دامبل"),
+                Pair("تراي بشبس باي دامبل", "تراي سبس - دامبل"),
+                Pair("تراي بشبس كابل", "تراي سبس - كابل"),
+                Pair("دِبس", "تراي سبس - وزن الجسم"),
+                Pair("كيبل كيرل", "باي سبس - كابل")
+            )),
+            Triple("الكارديو", "كارديو", listOf(
+                Pair("جري", "كارديو - تريدميل"),
+                Pair("دراجة ثابتة", "كارديو - دراجة"),
+                Pair("إليبتيكال", "كارديو - إليبتيكال"),
+                Pair("روينج ماشين", "كارديو + ظهر - روينج"),
+                Pair("جامبينج جاكس", "كارديو - وزن الجسم"),
+                Pair("سكيبينج", "كارديو - حبل")
+            ))
+        )
 
         AlertDialog(
             onDismissRequest = { showAddExerciseDialog = false },
             title = { Text("إضافة تمرين جديد", color = OnSurface) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                ) {
+                    // Category tabs
+                    Text("اختر نوع التمرين", style = MaterialTheme.typography.labelSmall, color = Outline)
+                    androidx.compose.foundation.lazy.LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(exerciseCategories.size) { idx ->
+                            val (label, _, _) = exerciseCategories[idx]
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (selectedCategory == idx) Primary.copy(alpha = 0.2f)
+                                        else SurfaceContainerHigh,
+                                        RoundedCornerShape(50)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (selectedCategory == idx) Primary.copy(alpha = 0.6f)
+                                        else Color.White.copy(alpha = 0.08f),
+                                        RoundedCornerShape(50)
+                                    )
+                                    .clickable { selectedCategory = idx }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (selectedCategory == idx) Primary else Outline
+                                )
+                            }
+                        }
+                    }
+
+                    // Predefined exercises for selected category
+                    val currentExercises = exerciseCategories[selectedCategory].third
+                    Text("اختر تمريناً:", style = MaterialTheme.typography.labelSmall, color = Outline)
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        currentExercises.forEach { (exName, target) ->
+                            val isSelected = exerciseName == exName
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (isSelected) Primary.copy(alpha = 0.25f)
+                                        else SurfaceContainer,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (isSelected) Primary else Color.White.copy(alpha = 0.1f),
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable {
+                                        exerciseName = exName
+                                        targetMuscles = target
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Column {
+                                    Text(exName, style = MaterialTheme.typography.labelMedium, color = if (isSelected) Primary else OnSurface, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                                    Text(target, style = MaterialTheme.typography.labelSmall, color = Outline, fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+
+                    // Custom name fields
+                    Text("أو أدخل اسماً يدوياً:", style = MaterialTheme.typography.labelSmall, color = Outline)
                     OutlinedTextField(
                         value = exerciseName,
                         onValueChange = { exerciseName = it },
                         label = { Text("اسم التمرين") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,
+                            focusedLabelColor = Primary,
+                            focusedTextColor = OnSurface,
+                            unfocusedTextColor = OnSurface
+                        )
                     )
                     OutlinedTextField(
                         value = targetMuscles,
                         onValueChange = { targetMuscles = it },
-                        label = { Text("العضلات المستهدفة") },
-                        modifier = Modifier.fillMaxWidth()
+                        label = { Text("العضلات المستهدفة / الجهاز") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,
+                            focusedLabelColor = Primary,
+                            focusedTextColor = OnSurface,
+                            unfocusedTextColor = OnSurface
+                        )
                     )
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    if (exerciseName.isNotBlank()) {
-                        viewModel.addExercise(exerciseName, targetMuscles)
-                    }
-                    showAddExerciseDialog = false
-                }) { Text("إضافة") }
+                Button(
+                    onClick = {
+                        if (exerciseName.isNotBlank()) {
+                            viewModel.addExercise(exerciseName, targetMuscles)
+                        }
+                        showAddExerciseDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                ) { Text("إضافة", color = OnPrimary) }
             },
             dismissButton = {
-                TextButton(onClick = { showAddExerciseDialog = false }) { Text("إلغاء") }
+                TextButton(onClick = { showAddExerciseDialog = false }) { Text("إلغاء", color = Outline) }
             },
             containerColor = SurfaceContainerHigh
         )
     }
+
 
     Column(
         modifier = Modifier

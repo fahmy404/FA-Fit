@@ -106,6 +106,16 @@ class MainViewModel : ViewModel() {
         loadChallenges()
         loadDailyLog(todayDateString())
         loadFavoriteMeals()
+        loadWorkoutForDate(todayDateString())
+    }
+
+    fun reloadAllData() {
+        val today = todayDateString()
+        loadProfile()
+        loadChallenges()
+        loadDailyLog(today)
+        loadFavoriteMeals()
+        loadWorkoutForDate(today)
     }
 
     fun loadProfile() {
@@ -127,6 +137,11 @@ class MainViewModel : ViewModel() {
                             waterGoal = waterGoalCups
                         )
                     }
+                    // Reload daily data now that we have user
+                    val today = todayDateString()
+                    loadDailyLog(today)
+                    loadFavoriteMeals()
+                    loadWorkoutForDate(today)
                 } else {
                     _state.update {
                         it.copy(
@@ -497,6 +512,22 @@ class MainViewModel : ViewModel() {
 
     fun logout() {
         auth.signOut()
-        _state.update { AppState() }
+        // Reset all state completely so next login starts fresh
+        _state.value = AppState(isProfileLoading = false)
+    }
+
+    // Calculate real progress for a challenge based on actual app data
+    fun getChallengeProgress(challenge: Challenge): Int {
+        val s = _state.value
+        return when (challenge.type) {
+            "calories" -> s.caloriesConsumed
+            "workouts" -> s.workoutSchedule.values.sumOf { exList ->
+                exList.sumOf { ex -> ex.sets.count { it.isDone } }
+            }
+            "volume" -> s.workoutSchedule.values.sumOf { exList ->
+                exList.sumOf { ex -> ex.sets.sumOf { s -> if (s.isDone) s.weight * s.reps else 0 } }
+            }
+            else -> 0
+        }
     }
 }

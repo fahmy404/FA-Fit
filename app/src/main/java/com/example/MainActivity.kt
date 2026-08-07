@@ -90,7 +90,8 @@ class MainActivity : ComponentActivity() {
                         composable("login") {
                             LoginScreen(
                                 onLoginSuccess = {
-                                    viewModel.loadProfile()
+                                    // Reload all data fresh after login to avoid stale state
+                                    viewModel.reloadAllData()
                                     navController.navigate("loading") {
                                         popUpTo("login") { inclusive = true }
                                     }
