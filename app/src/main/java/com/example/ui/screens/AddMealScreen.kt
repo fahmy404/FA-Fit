@@ -23,9 +23,11 @@ import androidx.compose.ui.unit.dp
 import com.example.ui.components.glassCard
 import com.example.ui.theme.*
 import com.example.ui.viewmodels.MainViewModel
-import kotlinx.coroutines.launch
+import com.example.api.MealAnalysisError
 import com.example.api.MealAnalysisResult
 import com.example.api.MealService
+import kotlinx.coroutines.launch
+
 
 enum class MealInputMode { AI, SEARCH, BARCODE, MANUAL }
 
@@ -262,18 +264,28 @@ fun AddMealScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                 isAnalyzing = true
                                 analyzeError = ""
                                 coroutineScope.launch {
-                                    val result = mealService.analyzeMeal(mealText)
+                                    val response = mealService.analyzeMealFull(mealText)
                                     isAnalyzing = false
-                                    if (result != null && result.calories > 0) {
-                                        analyzedCalories = result.calories.toString()
-                                        analyzedProtein = result.protein.toString()
-                                        analyzedCarbs = result.carbs.toString()
-                                        analyzedFat = result.fat.toString()
-                                        mealName = result.name
-                                        showEditDialog = true
-                                        analyzeError = ""
-                                    } else {
-                                        analyzeError = "⚠️ تعذّر التحليل. تأكد من اتصال الإنترنت أو حاول وصف الأكل بشكل أوضح."
+                                    when {
+                                        response.isSuccess -> {
+                                            val result = response.result!!
+                                            analyzedCalories = result.calories.toString()
+                                            analyzedProtein = result.protein.toString()
+                                            analyzedCarbs = result.carbs.toString()
+                                            analyzedFat = result.fat.toString()
+                                            mealName = result.name
+                                            showEditDialog = true
+                                            analyzeError = ""
+                                        }
+                                        response.error is MealAnalysisError.RateLimited -> {
+                                            analyzeError = "⏳ الخدمة مشغولة حالياً (الحد اليومي). جرب بعد دقيقة أو استخدم tab البحث."
+                                        }
+                                        response.error is MealAnalysisError.NetworkError -> {
+                                            analyzeError = "⚠️ تعذّر الاتصال بالإنترنت. تأكد من الاتصال وحاول مجدداً."
+                                        }
+                                        else -> {
+                                            analyzeError = "⚠️ لم يتم التعرف على الوجبة. حاول وصف الأكل بشكل أوضح مثلاً: 'طبق فول + 2 بيضة مسلوقة'"
+                                        }
                                     }
                                 }
                             }

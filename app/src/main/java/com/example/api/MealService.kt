@@ -13,30 +13,69 @@ data class MealAnalysisResult(
     val name: String
 )
 
+// Error types returned by analyzeMeal
+sealed class MealAnalysisError {
+    object RateLimited : MealAnalysisError()
+    object NetworkError : MealAnalysisError()
+    object ParseError : MealAnalysisError()
+}
+
+data class MealAnalysisResponse(
+    val result: MealAnalysisResult? = null,
+    val error: MealAnalysisError? = null
+) {
+    val isSuccess: Boolean get() = result != null && error == null
+}
+
 class MealService {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
     suspend fun analyzeMeal(description: String): MealAnalysisResult? {
+        val response = analyzeMealFull(description)
+        return response.result
+    }
+
+    suspend fun analyzeMealFull(description: String): MealAnalysisResponse {
         val resultJsonString = analyzeMealWithGemini(description)
-        return try {
-            val json = JSONObject(resultJsonString)
-            MealAnalysisResult(
-                calories = json.optInt("calories", 0),
-                protein = json.optInt("protein", 0),
-                carbs = json.optInt("carbs", 0),
-                fat = json.optInt("fat", 0),
-                name = json.optString("name", description)
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
+
+        // Check for specific error sentinels
+        return when (resultJsonString) {
+            RESULT_RATE_LIMITED -> MealAnalysisResponse(error = MealAnalysisError.RateLimited)
+            RESULT_NETWORK_ERROR -> MealAnalysisResponse(error = MealAnalysisError.NetworkError)
+            else -> {
+                try {
+                    val json = JSONObject(resultJsonString)
+
+                    // Check if the JSON itself contains an error field
+                    if (json.has("error")) {
+                        return MealAnalysisResponse(error = MealAnalysisError.NetworkError)
+                    }
+
+                    val result = MealAnalysisResult(
+                        calories = json.optInt("calories", 0),
+                        protein = json.optInt("protein", 0),
+                        carbs = json.optInt("carbs", 0),
+                        fat = json.optInt("fat", 0),
+                        name = json.optString("name", description)
+                    )
+
+                    if (result.calories == 0) {
+                        MealAnalysisResponse(error = MealAnalysisError.ParseError)
+                    } else {
+                        MealAnalysisResponse(result = result)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    MealAnalysisResponse(error = MealAnalysisError.ParseError)
+                }
+            }
         }
     }
 
     suspend fun saveMealToFirestore(result: MealAnalysisResult): Boolean {
         val userId = auth.currentUser?.uid ?: return false
-        
+
         return try {
             val mealData = hashMapOf(
                 "name" to result.name,
@@ -46,7 +85,7 @@ class MealService {
                 "fat" to result.fat,
                 "timestamp" to System.currentTimeMillis()
             )
-            
+
             db.collection("users").document(userId)
                 .collection("meals").add(mealData).await()
             true
