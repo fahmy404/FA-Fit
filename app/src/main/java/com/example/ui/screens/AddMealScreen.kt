@@ -278,13 +278,13 @@ fun AddMealScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                                             analyzeError = ""
                                         }
                                         response.error is MealAnalysisError.RateLimited -> {
-                                            analyzeError = "⏳ الخدمة مشغولة حالياً (الحد اليومي). جرب بعد دقيقة أو استخدم tab البحث."
+                                            analyzeError = "⏳ الخدمة وصلت للحد الأقصى. حاول بعد دقيقة أو استخدم tab 'بحث' للوجبات الجاهزة."
                                         }
                                         response.error is MealAnalysisError.NetworkError -> {
-                                            analyzeError = "⚠️ تعذّر الاتصال بالإنترنت. تأكد من الاتصال وحاول مجدداً."
+                                            analyzeError = "⚠️ تعذّر الاتصال. تأكد من الإنترنت وحاول مجدداً."
                                         }
                                         else -> {
-                                            analyzeError = "⚠️ لم يتم التعرف على الوجبة. حاول وصف الأكل بشكل أوضح مثلاً: 'طبق فول + 2 بيضة مسلوقة'"
+                                            analyzeError = "⚠️ لم يتم التعرف على الوجبة. مثال: 'طبق فول + 2 بيضة مسلوقة'"
                                         }
                                     }
                                 }

@@ -27,14 +27,10 @@ data class GenerateContentRequest(
 )
 
 @Serializable
-data class Content(
-    val parts: List<Part>
-)
+data class Content(val parts: List<Part>)
 
 @Serializable
-data class Part(
-    val text: String? = null
-)
+data class Part(val text: String? = null)
 
 @Serializable
 data class GenerationConfig(
@@ -43,14 +39,10 @@ data class GenerationConfig(
 )
 
 @Serializable
-data class GenerateContentResponse(
-    val candidates: List<Candidate>
-)
+data class GenerateContentResponse(val candidates: List<Candidate>)
 
 @Serializable
-data class Candidate(
-    val content: Content
-)
+data class Candidate(val content: Content)
 
 interface GeminiApiService {
     @POST("v1beta/models/gemini-2.0-flash:generateContent")
@@ -107,27 +99,36 @@ suspend fun analyzeMealWithGemini(prompt: String): String = withContext(Dispatch
                 return@withContext text
             }
         } catch (e: HttpException) {
-            // 429 = Too Many Requests (rate limit)
             if (e.code() == 429) {
-                return@withContext RESULT_RATE_LIMITED
-            }
-            // Other HTTP errors - retry with backoff
-            if (attempt < maxRetries - 1) {
-                delay(2000L * (attempt + 1)) // 2s, 4s
+                // On 429, wait 30 seconds then retry (max 2 retries for rate limit)
+                if (attempt < 2) {
+                    delay(30_000L) // wait 30 seconds before retry
+                } else {
+                    return@withContext RESULT_RATE_LIMITED
+                }
             } else {
-                e.printStackTrace()
-                return@withContext RESULT_NETWORK_ERROR
+                if (attempt < maxRetries - 1) {
+                    delay(2000L * (attempt + 1))
+                } else {
+                    e.printStackTrace()
+                    return@withContext RESULT_NETWORK_ERROR
+                }
             }
         } catch (e: Exception) {
-            val msg = e.message ?: ""
+            val msg = (e.message ?: "") + (e.cause?.message ?: "")
             if (msg.contains("429") || msg.contains("RESOURCE_EXHAUSTED", ignoreCase = true)) {
-                return@withContext RESULT_RATE_LIMITED
-            }
-            if (attempt < maxRetries - 1) {
-                delay(2000L * (attempt + 1))
+                if (attempt < 2) {
+                    delay(30_000L)
+                } else {
+                    return@withContext RESULT_RATE_LIMITED
+                }
             } else {
-                e.printStackTrace()
-                return@withContext RESULT_NETWORK_ERROR
+                if (attempt < maxRetries - 1) {
+                    delay(2000L * (attempt + 1))
+                } else {
+                    e.printStackTrace()
+                    return@withContext RESULT_NETWORK_ERROR
+                }
             }
         }
     }
